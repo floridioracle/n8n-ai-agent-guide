@@ -86,7 +86,17 @@ Crear workflow para subir archivos y usarlos como Knowledge Base:
 
 #### 2. Oracle Database Vector Store Insert
 * Nodo: "Oracle Database Vector Store: Insert"
-* Configuración: Conexión a Oracle Database account
+![Procesamiento archivos](screenshots/5.jpeg)
+
+* Configuración: 
+* user: 
+* password: 
+* Host:
+* Port:
+* Service Name:
+
+![Procesamiento archivos](screenshots/5.a.jpeg)
+
 * Table Name: prueba_demos_chile
 * Clear Table: Activado (limpia tabla antes de insertar)
 * Propósito: Insertar documentos procesados en la base de datos vectorial
