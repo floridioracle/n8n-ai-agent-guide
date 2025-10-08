@@ -28,15 +28,9 @@ npx n8n
 ```
 
 
-## 📁 Configuración del Directorio de Trabajo
+## 📁 Ejecución de n8n
 
-1. **Crear directorio para N8N:**
-   ```powershell
-   mkdir C:\Users\TU_USUARIO\N8N
-   cd C:\Users\TU_USUARIO\N8N
-   ```
-
-2. **Ejecutar N8N desde el directorio:**
+**Ejecutar N8N**
    ```powershell
    npx n8n
    ```
@@ -62,9 +56,22 @@ Una vez que N8N esté ejecutándose:
 3. Configura tu nombre de usuario y contraseña
 4. ¡Comienza a crear tus primeros workflows!
 
-Instalar paquetes adicionales:
+### Instalación de nodos de Oracle
+
+Instalar paquetes adicionales
 
 Instalar el paquete de n8n-nodes-oracle-cloud
+
+Para instalar los nosods de Oracle pordemos navegar a
+
+> Settings > Community nodes > Install community nodes
+
+y allí vamos a buscar el paquete
+
+```
+n8n-nodes-oracle-cloud
+```
+
 ![Workflow inicio](screenshots/1.png)
 
 ![Workflow inicio](screenshots/2.jpeg)
@@ -85,32 +92,45 @@ El propósito de este notebook es implementar el siguiente workflow.
 ![n8n_workflow](./screenshots/n8n_flow.png)
 
 
-### 🔤 Workflow para Subir Archivos 
-Crear workflow para subir archivos y usarlos como Knowledge Base:
+## 🔤 Implementación del workflow
 
-#### 1. Inicio del workflow 
+En el siguiente workflow disennaremos un agente que responde a preguntas relacionadas con algunos textos. Este workflow se compone de dos flujos, en el primer flujo vamos a dividir los archivos en secciones y a generar un vector para cada una de estas secciones. Luego, este vector se almacenará en la base de datos vectorial.
+
+#### 1. On form submission
+
+> Este nodo mostrará un formulario que nos permitirá adjuntar el archivo con el que queremos alimentar al agente
 
 Para iniciar el workflow, crearemos el nodo con la siguiente información.
 
-* Nodo: "On form submission"
-* Configuración: Form para subir archivos con campo "Subir archivos"
-* Elementos: File upload field, accepted file types (.jpg, .png), multiple files enabled
-* Propósito: Crear formulario web para recibir archivos del usuario
+* Nombre: "On form submission"
+
+**Parameters**
+
+- Form Title: subir archivos
+- Form elements: 
+   - Field name: Subir archivos
+   - Element Type: File
+
+- Respond When: Form is submitted
 
 ![Workflow inicio](screenshots/A.jpeg)
 
 #### 2. Oracle Database Vector Store Insert
-* Nodo: "Oracle Database Vector Store: Insert"
+
+> Este nodo nos permitirá insertar elementos en la base de datos vectorial.
+
+* Nombre: "Oracle Database Vector Store: Insert"
+
+**Parameters**
+- Table Name: vectores
+- Clear Table: Activado (limpia tabla antes de insertar)
+
+#### 2.1 Oracle Database account
 ![Procesamiento archivos](screenshots/5.jpeg)
 
-* Configuración: 
-* user: 
-* password: 
-* Host:
-* Port:
-* Service Name:
+El valor de cada campo se puede encontrar en algún *Connection string*, disponible en la sección *Database Connection*, es recomendable usar el Connection String medium.
 
-El llenado de campos se puede hacer a partir del contenido de algún *Connection string*, disponible en la sección *Database Connection*
+Para obtener los valores de este nodo podemos navegar a la consola de Oracle a la sección *Database Connection*
 
 ![Procesamiento archivos](screenshots/5.a.jpeg)
 
@@ -118,54 +138,122 @@ El llenado de campos se puede hacer a partir del contenido de algún *Connection
 
 Recomendamos usar el Conenction String medium.
 
-* Table Name: prueba_demos
-* Clear Table: Activado (limpia tabla antes de insertar)
-* Propósito: Insertar documentos procesados en la base de datos vectorial
-
 ![Procesamiento archivos](screenshots/B.jpeg)
 
 #### 3. Conexión de nodos Default Data Loader
+
+> El propósito de este nodo es cargar y procesar archivos binarios, detectando el formato automáticamente
+
 * Nodo: "Default Data Loader"
-* Type of Data: Binary
-* Mode: Load All Input Data
-* Data Format: Automatically Detect by Mime Type
-* Text Splitting: Custom
-* Options: Split Pages in PDF (activado)
-* Propósito: Cargar y procesar archivos binarios, detectar formato automáticamente
+
+**Parameters**
+- Type of Data: Binary
+- Mode: Load All Input Data
+- Data Format: Automatically Detect by Mime Type
+- Text Splitting: Custom
+- Options: Split Pages in PDF (activado)
 
 ![Conexión nodos](screenshots/C.jpeg)
 
 #### 4. Recursive Character Text Splitter
+
+> El propósito de este nodo es dividir texto en chunks manejables para embeddings
+
 * Nodo: "Recursive Character Text Splitter"
-* Chunk Size: 500
-* Chunk Overlap: 25
-* Options: No properties
-* Propósito: Dividir texto en chunks manejables para embeddings
+
+**Parameters**
+- Chunk Size: 500
+- Chunk Overlap: 25
+- Options: No properties
 
 ![Finalización](screenshots/D.jpeg)
 
-### 🔢 Creación del Agente IA 
-Pasos completos para crear un agente IA con su propia base de datos:
+#### 5. Embeddins OCI Generative AI
 
-**Nodos base del workflow**
-![Nodos base](screenshots/4.jpeg)
+> El propósito de este nodo es generar los embeddings o vectores para cada chunk de información.
 
-**Chat Responses (nodo inicial)**
+* Nombre: "Embeddings OCI Generative AI*
+
+**Parameters**
+
+- Compartment ID: Aquí escribiremos el id del compartment, es un valor que empieza por ocid1.compartment o ocid1.tenancy y está disponible en https://cloud.oracle.com/identity/compartments
+
+- On Demand Model Name or ID: Aquí seleccionaremos el nombre del modelo, recomendamos cohere.embed-multilingual-v3.0
+
+- Credential to connect with: Aquí crearemos una nueva credencial y seguiremos la documentación en la sección Credentials 
+
+![node_5](screenshots/node_5.png)
+
+#### 5.1 Credential to connect with
+
+**Parameters**
+
+- User OCID: El id de nuestro usuario, es un valor que empieza con ocid1.user.oc1..
+
+- Tenancy OCID: El id de nuestro tenancy, es un valor que empieza con  ocid1.tenancy.oc1..
+
+- Key Fingerprint: El fingerprint de nuestra credencial, es un valor que tiene un formato similar a A0:B1:E4
+
+- Region: La región en la que fue creada nuestra cuenta, puede ser: "sa-saopaulo-1", "us-chicago-1", "uk-london-1", "eu-frankfurt-1", "ap-osaka-1", etc...
+
+- Private Key: El contenido del archivo .pem descargado en la creación de la credencial
+
+- Private Key Passphrase: Passphrase de nuestra key, si no hay una passphrase, podemos dejar en blanco.
+
+Aquí finaliza el flujo de procesamiento de los documentos, el siguiente paso es crear el agente de IA que consume la información vectorizada.
+
+El primer paso es crear un nodo de chat, este nodo iniciará el flujo ya que queremos que el agente se ejecute cada vez que el usuario inicia un mensaje.
+
+#### 6. When chat message received
+
+* Nombre: When chat message received
+
 ![Chat Responses](screenshots/6.jpeg)
+#### 7. AI Agent
 
-**AI Agent (configuración principal)**
-![Vector Store Tool](screenshots/11.jpeg)
-![AI Agent](screenshots/7.jpeg)
+> Este nodo nos permitirá ejecutar un agente que buscará información relevante en una base de datos para responder a las preguntas del usuario.
 
-**OCI Generative AI Chat Model**
+**Parameters**
+
+- Source for Prompt (User Message): Define below
+- Prompt: ```Eres un asistente muy amable que responde a las preguntas del usuario.
+Usuario:
+{{ $json.chatInput }}```
+
 ![OCI Chat Model](screenshots/8.jpeg)
 
-**Configuración de Tools/Herramientas**
-![Tools Config](screenshots/9.jpeg)
+#### 8. OCI Generative AI Chat Model
 
-![Tools Config](screenshots/10.jpeg)
+> Este nodo corresponde al modelo de IA generativa que usará el agente para responder a las preguntas.
 
-![Tools Config](screenshots/12.jpeg)
+**Parameters**
+
+- Credential to connect with: Aquí podemos usar la credencial creada en el step 5.1
+- Compartment ID: Podemos usar el mismo compartment del step 5
+- On Demand Model Name or Id: Seleccionaremos el modelo que queremos usar para generar respuestas, dependiendo de nuestra región, algunos modelos pueden estar o no disponibles. Algunos modelos para probar son: "meta.llama-4-maverick-17b-128e-instruct-fp8", "meta.llama-3.3-70b-instruct"
+
+![node_8](screenshots/node_8.png)
+
+#### 9. Simple Memory
+
+> Es la memoria simple que el agente usará para almacenar la conversación
+
+#### 10.Vector Store Tool
+
+> Esta es la herramienta usada por el agente para buscar información relevante en los documentos.
+
+**Parameters**
+
+- Credential to connect with: Aquí podemos usar la credencial creada en el step 5.1
+- Name: vd_tool
+- Table name: vectores
+- Limit: 4
+- distance Strategy: EUCLIDEAN_DISTANCE
+
+![node_10](screenshots/node_10.png)
+
+### Uso del agente
+
 
 
 ## 📚 Recursos Adicionales
@@ -173,5 +261,4 @@ Pasos completos para crear un agente IA con su propia base de datos:
 - **Documentación oficial:** https://docs.n8n.io/
 - **Comunidad:** https://community.n8n.io/
 - **Templates:** https://n8n.io/workflows/
-- **GitHub:**4. Ir a settings -> Community nodes
 
