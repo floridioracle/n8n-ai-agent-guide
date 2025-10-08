@@ -252,7 +252,7 @@ Usuario:
 
 ![node_10](screenshots/node_10.png)
 
-### Uso del agente
+
 
 
 
@@ -261,4 +261,5 @@ Usuario:
 - **Documentación oficial:** https://docs.n8n.io/
 - **Comunidad:** https://community.n8n.io/
 - **Templates:** https://n8n.io/workflows/
+
 
